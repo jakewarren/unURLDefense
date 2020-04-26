@@ -3,8 +3,9 @@
   "manifest_version": 2,
   "name": "unURLDefense",
   "version": "1.0",
+  "homepage_url": "https://github.com/deian/unURLDefense",
 
-  "description": "Strip URLDefense (and Gmail) URL redirects",
+  "description": "Strip URLDefense (and Gmail) URL click-tracking.",
 
   "content_scripts": [
     {
