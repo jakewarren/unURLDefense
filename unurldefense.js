@@ -1,7 +1,7 @@
 const urldefenseRegex = /https:\/\/urldefense.com\/.*?\/__(.*?)__;.*?\$/;
 
 function unUrlDefense(url) {
-  return url.replace(urldefenseRegex, "$1");
+  return url.replace(urldefenseRegex, "$1").replace("*","#");
 }
 
 // process all links and remove the urldefense wrapper
