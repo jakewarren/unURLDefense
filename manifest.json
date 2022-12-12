@@ -1,17 +1,18 @@
 {
-
   "manifest_version": 2,
   "name": "unURLDefense",
   "version": "1.1",
   "homepage_url": "https://github.com/deian/unURLDefense",
-
   "description": "Strip URLDefense (and Gmail) URL click-tracking.",
-
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["unurldefense.js"]
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.office365.com/mail/*"
+      ],
+      "js": [
+        "unurldefense.js"
+      ]
     }
   ]
-
 }
