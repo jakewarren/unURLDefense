@@ -8,7 +8,8 @@
     {
       "matches": [
         "https://mail.google.com/*",
-        "https://outlook.office365.com/mail/*"
+        "https://outlook.office365.com/mail/*",
+        "https://outlook.office.com/mail/*"
       ],
       "js": [
         "unurldefense.js"
