@@ -1,75 +1,117 @@
-
-
-// source: https://github.com/cphyc/thunderbird_remove_safelinks/blob/e48b3f3bf547797cfc9db60cbcd43003c8a0f545/src/decoders.js
-function unUrlDefense(a) {
-  let proofpoint_regex = new RegExp('https://urldefense(?:\.proofpoint)?\.com/(v[0-9])/([.:]?[-+a-zA-Z0-9%&/=;_!?*$]+)+');
-  var proofpoint = a.match(proofpoint_regex);
-  if (!proofpoint)
-    return a;
-
-  var v = proofpoint[1];
-  var outurl = a;
-  if (v == 'v1') {
-    let v1_pattern = new RegExp('https://urldefense(?:\.proofpoint)?\.com/v1/url\\?u=([^&]*)&k=.*');
-    outurl = decodeURIComponent(a.match(v1_pattern)[1]);
-  } else if (v == 'v2') {
-    let v2_pattern = new RegExp('https://urldefense(?:\.proofpoint)?\.com/v2/url\\?u=([^&]*)&[dc]=.*');
-    let url = a.match(v2_pattern)[1].replace(/-/g, '%').replace(/_/g, '/');
-    outurl = decodeURIComponent(url);
-  } else if (v == 'v3') {
-    let v3_pattern = new RegExp('https://urldefense(?:\.proofpoint)?\.com/v3/__(.+)__;([^\!]*).*');
-    let v3_token_pattern = new RegExp('\\*(\\*.)?', 'g');
-    let length_codes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-    let url = a.match(v3_pattern);
-    let encbytes = atob(url[2].replace(/_/g, '/').replace(/-/g, '+'));
-    let encbytes_off = 0;
-
-    outurl = url[1].replace(v3_token_pattern, (chunk) => {
-      var len = 1;
-      if (chunk.length > 1)
-        len = length_codes.search(chunk[2]) + 2;
-      var out = encbytes.substring(encbytes_off, encbytes_off + len);
-      encbytes_off += len;
-      return out;
-    });
+// ref: https://github.com/cphyc/thunderbird_remove_safelinks/blob/e48b3f3bf547797cfc9db60cbcd43003c8a0f545/src/decoders.js
+function unUrlDefense(link) {
+  const proofpoint_regex = new RegExp(
+    "https://urldefense(?:.proofpoint)?.com/(v[0-9])/([.:]?[-+a-zA-Z0-9%&/=;_!?*$]+)+"
+  );
+  const proofpoint = link.match(proofpoint_regex);
+  if (!proofpoint) {
+    return link;
   }
 
-  return outurl;
-}
-
-// process all links and remove the urldefense wrapper
-function stripURLs() {
-  for (const a of document.getElementsByTagName('a')) {
-    if (a.hostname === "urldefense.com") {
-      const href = new URL(a.href).href;
-      a.href = unUrlDefense(href);
-      a.dataset.saferedirecturl = unUrlDefense(href);
-      a.innerText = unUrlDefense(a.innerText)
+  switch (proofpoint[1]) {
+    case "v1": {
+      const v1_pattern = new RegExp(
+        "https://urldefense(?:.proofpoint)?.com/v1/url\\?u=([^&]*)&k=.*"
+      );
+      return decodeURIComponent(link.match(v1_pattern)[1]);
     }
-  }
-}
 
-var observeDOM = (function () {
-  var MutationObserver = window.MutationObserver || window.WebKitMutationObserver,
-    eventListenerSupported = window.addEventListener;
+    case "v2": {
+      const v2_pattern = new RegExp(
+        "https://urldefense(?:.proofpoint)?.com/v2/url\\?u=([^&]*)&[dc]=.*"
+      );
+      const url = link
+        .match(v2_pattern)[1]
+        .replace(/-/g, "%")
+        .replace(/_/g, "/");
+      return decodeURIComponent(url);
+    }
 
-  return function (obj, callback) {
-    if (MutationObserver) {
-      var obs = new MutationObserver(function (mutations, observer) {
-        if (mutations[0].addedNodes.length || mutations[0].removedNodes.length)
-          callback();
+    case "v3": {
+      const v3_pattern = new RegExp(
+        "https://urldefense(?:.proofpoint)?.com/v3/__(.+)__;([^!]*).*"
+      );
+      const v3_token_pattern = new RegExp("\\*(\\*.)?", "g");
+      const length_codes =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+      const url = link.match(v3_pattern);
+      const encbytes = atob(url[2].replace(/_/g, "/").replace(/-/g, "+"));
+
+      let encbytes_off = 0;
+      return url[1].replace(v3_token_pattern, (chunk) => {
+        const len = chunk.length > 1 ? length_codes.search(chunk[2]) + 2 : 1;
+        const out = encbytes.substring(encbytes_off, encbytes_off + len);
+        encbytes_off += len;
+        return out;
       });
-      obs.observe(obj, { childList: true, subtree: true });
     }
-    else if (eventListenerSupported) {
-      obj.addEventListener('DOMNodeInserted', callback, false);
-      obj.addEventListener('DOMNodeRemoved', callback, false);
+  }
+
+  return link;
+}
+
+// mcCreepy just watches mutants and their children waiting to see if any of them
+// start wrapping so that he can call the strippers on them.
+// Which is to say, remove all urlDefense link wrappers in any and all emails.
+const mcCreepy = new MutationObserver((mutationsList, mcCreepy) => {
+  for (const mutation of mutationsList) {
+    if (mutation.type === "childList" && mutation.addedNodes.length) {
+      callStripper();
     }
+  }
+});
+
+// callStripper is a hollaback fn to call the most desirable stripper for the occasion.
+// Outlook checks if Jane is avail to use but will settle for HTML. Gmail always goes with HTML.
+const callStripper = () => {
+  const txtEmail = document.querySelector(".PlainText");
+  if (txtEmail) {
+    plainJaneStripper(txtEmail);
+  } else {
+    htmlStripper();
+  }
+};
+
+// plainJane strips links from "text/plain" emails (outlook specific)
+const plainJaneStripper = (txtEmail) => {
+  if (
+    txtEmail.innerHTML.length > 0 &&
+    !txtEmail.hasAttribute("data-has-been-mutated")
+  ) {
+    txtEmail.innerHTML = txtEmail.innerHTML.replaceAll(
+      /https:\/\/urldefense[^$]+\$/gm,
+      (...match) => unUrlDefense(match[0])
+    );
+  }
+  txtEmail.setAttribute("data-has-been-mutated", "true");
+};
+
+// HTML strips links out the <a>.. tags
+const htmlStripper = () => {
+  for (const link of document.getElementsByTagName("a")) {
+    if (link.hostname === "urldefense.com") {
+      const href = new URL(link.href).href;
+      link.href = unUrlDefense(href);
+      link.dataset.saferedirecturl = unUrlDefense(href);
+      link.innerText = unUrlDefense(link.innerText);
+    }
+  }
+};
+
+(() => {
+  // Outlook is always a ReadingPain, so we can just watch that section.
+  // Gmail changes their classes like they're dirty diapers, so just watch their whole body and stuff or w/e...
+  const target = document.querySelector(
+    "#ReadingPaneContainerId > div > div > div"
+  );
+
+  // mutants and their lil mutant children to creep on
+  const mutants = { childList: true, subtree: true };
+
+  // let the games begin...
+  if (target) {
+    mcCreepy.observe(target, mutants);
+  } else {
+    mcCreepy.observe(document.querySelector("body"), mutants);
   }
 })();
-
-// use a DOM MutationObserver to monitor changes (like loading an email) and strip the urldefense URLS from all links
-// NOTE: monitoring the body element could potentially have performance impacts, need to monitor
-observeDOM(document.querySelector('body'), function () {
-  stripURLs();
-});
