@@ -1,4 +1,4 @@
-This extension strips URLDefense's tracking from GMail pages. There are
+This extension strips URLDefense's tracking from GMail and Outlook. There are
 security benefits to after-the-fact click tracking, but I personally don't want
 reveal which links I click on and when or share awkward links when I forward
 emails.
