@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        unURLDefense
 // @description remove urlDefense link wrappers in all (outlook|gmail) emails
-// @version     1.2.3
+// @version     1.3.0
 // @match       https://outlook.office365.com/mail/*
 // @match       https://outlook.office.com/mail/*
 // @match       https://mail.google.com/*
