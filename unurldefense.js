@@ -50,34 +50,27 @@ function unUrlDefense(link) {
   return link;
 }
 
-// mcCreepy just watches mutants and their children waiting to see if any of them
-// start wrapping so that he can call the strippers on them.
-// Which is to say, remove all urlDefense link wrappers in any and all emails.
-const mcCreepy = new MutationObserver((mutationsList, mcCreepy) => {
+// strippers - America's favorite past-time...
+// Though in this context it's just a callback function which will strip
+// all URLDefense wrappers/handlers from any email as it is being opened.
+const strippers = (mutationsList) => {
   for (const mutation of mutationsList) {
-    if (mutation.type === "childList" && mutation.addedNodes.length) {
-      callStripper();
-    }
-  }
-});
+    for (const _addedNode of mutation.addedNodes) {
+      // special handling required if it's a text email in outlook
+      const txtEmail = document.querySelector(".PlainText");
+      if (txtEmail) {
+        plainJaneStripper(txtEmail);
+        continue;
+      }
 
-// callStripper is a hollaback fn to call the most desirable stripper for the occasion.
-// Outlook checks if Jane is avail to use but will settle for HTML. Gmail always goes with HTML.
-const callStripper = () => {
-  const txtEmail = document.querySelector(".PlainText");
-  if (txtEmail) {
-    plainJaneStripper(txtEmail);
-  } else {
-    htmlStripper();
+      htmlStripper();
+    }
   }
 };
 
 // plainJane strips links from "text/plain" emails (outlook specific)
 const plainJaneStripper = (txtEmail) => {
-  if (
-    txtEmail.innerHTML.length > 0 &&
-    !txtEmail.hasAttribute("data-has-been-mutated")
-  ) {
+  if (!txtEmail.hasAttribute("data-has-been-mutated")) {
     txtEmail.innerHTML = txtEmail.innerHTML.replaceAll(
       /https:\/\/urldefense[^$]+\$/gm,
       (...match) => unUrlDefense(match[0])
@@ -86,32 +79,44 @@ const plainJaneStripper = (txtEmail) => {
   txtEmail.setAttribute("data-has-been-mutated", "true");
 };
 
-// HTML strips links out the <a>.. tags
+// htmlstripper is anchors away stripping links from <a>.. tags
 const htmlStripper = () => {
-  for (const link of document.getElementsByTagName("a")) {
-    if (link.hostname === "urldefense.com") {
-      const href = new URL(link.href).href;
-      link.href = unUrlDefense(href);
-      link.dataset.saferedirecturl = unUrlDefense(href);
-      link.innerText = unUrlDefense(link.innerText);
+  for (const anchor of document.getElementsByTagName("a")) {
+    if (anchor.hostname === "urldefense.com") {
+      const barebackLink = unUrlDefense(anchor.href);
+      anchor.href = barebackLink;
+      anchor.dataset.saferedirecturl = barebackLink;
+
+      // if the displayed text was the og urldefense wrapped
+      // link then we'll replace it. Otherwise, let it be.
+      if (anchor.innerText.includes("urldefense")) {
+        anchor.innerText = barebackLink;
+      }
+
+      // clone-boning, effectively thwarts MS by removing the onclick
+      // handler added by safelinks. This is useful for weirdo's
+      // who left-click links in emails from time-to-time, like me.
+      const boned = anchor.cloneNode(true);
+      anchor.replaceWith(boned);
     }
   }
 };
 
 (() => {
-  // Outlook is always a ReadingPain, so we can just watch that section.
-  // Gmail changes their classes like they're dirty diapers, so just watch their whole body and stuff or w/e...
-  const target = document.querySelector(
+  // outlook is always a ReadingPain, so lets focus on that
+  let target = document.querySelector(
     "#ReadingPaneContainerId > div > div > div"
   );
 
-  // mutants and their lil mutant children to creep on
-  const mutants = { childList: true, subtree: true };
-
-  // let the games begin...
-  if (target) {
-    mcCreepy.observe(target, mutants);
-  } else {
-    mcCreepy.observe(document.querySelector("body"), mutants);
+  // gmail changes classes like they are dirty diapers.
+  // so observe all of their everything all at once, i suppose.
+  if (!target) {
+    target = document.querySelector("body");
   }
+
+  // moe fucks!
+  const moe = new MutationObserver(strippers);
+
+  // just watch. you'll see...
+  moe.observe(target, { childList: true, subtree: true });
 })();
