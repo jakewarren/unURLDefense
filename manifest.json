@@ -4,6 +4,16 @@
   "version": "1.4.0",
   "homepage_url": "https://github.com/jakewarren/unURLDefense",
   "description": "Strip URLDefense (and Gmail) URL click-tracking.",
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "redirect.js"
+    ]
+  },
   "content_scripts": [
     {
       "matches": [
